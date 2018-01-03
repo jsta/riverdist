@@ -924,37 +924,56 @@ riverpoints <- function(seg,vert,rivers,pch=1,col=1,jitter=0,...) {
 #' data(Kenai1)
 #' plot(x=Kenai1)
 #' 
-#' Kenai1.trim <- trimriver(trim=c(46,32,115,174,169,114,124,142,80), rivers=Kenai1)
+#' Kenai1.trim <- trimriver(trim=c(46,32,115,174,169,114,124,142,80), 
+#'                          rivers=Kenai1)
 #' plot(x=Kenai1.trim)
 #'  
-#' Kenai1.trim.2 <- trimriver(trimto=c(20,57,118,183,45,162,39,98,19), rivers=Kenai1)
+#' Kenai1.trim.2 <- trimriver(trimto = c(20,57,118,183,45,162,39,98,19), 
+#'                            rivers = Kenai1)
 #' plot(x=Kenai1.trim.2)
 #' @export
-trimriver <- function(trim=NULL,trimto=NULL,rivers) {
-  if(class(rivers)!="rivernetwork") stop("Argument 'rivers' must be of class 'rivernetwork'.  See help(line2network) for more information.")
+trimriver <- function(trim = NULL, trimto = NULL, rivers) {
+  if(class(rivers) != "rivernetwork") stop("Argument 'rivers' must be of class 'rivernetwork'.  See help(line2network) for more information.")
+  
   segs <- 1:length(rivers$lines)
+  
   if(!is.null(trim) & !is.null(trimto)) {
     stop("Error - cannot use both trim and trimto arguments")
   }
+  
+  # Neither trim nor trimto are numieric vectors with non-zero length
+  if(!(is.numeric(trim) == 1 & length(trim) > 0 | 
+       is.numeric(trimto) == 1 & length(trimto) > 0)){
+    return(rivers)
+  }
+  
   if(!is.null(trim)) {
-    if(max(trim,na.rm=T)>length(rivers$lines) | min(trim,na.rm=T)<1) stop("Invalid segment numbers specified.")
+    if(max(trim, na.rm = T) > length(rivers$lines) | 
+       min(trim, na.rm = T) < 1) stop("Invalid segment numbers specified.")
     segs <- segs[-trim]
   }
+  
   if(!is.null(trimto)) {
-    if(max(trimto,na.rm=T)>length(rivers$lines) | min(trimto,na.rm=T)<1) stop("Invalid segment numbers specified.")
+    if(max(trimto,na.rm = T) > length(rivers$lines) | 
+       min(trimto,na.rm = T) < 1) stop("Invalid segment numbers specified.")
     segs <- segs[trimto]
   }
+  
   trimmed.rivers <- rivers
   trimmed.rivers$lines <- trimmed.rivers$lines[segs]
-  trimmed.rivers$connections <- as.matrix(trimmed.rivers$connections[segs,segs])
+  trimmed.rivers$connections <- as.matrix(
+                                  trimmed.rivers$connections[segs,segs])
+  
   if(!is.na(trimmed.rivers$braided)) {
-    if(trimmed.rivers$braided & !any(trimmed.rivers$connections %in% 5:6)) trimmed.rivers$braided <- NA
+    if(trimmed.rivers$braided & !any(trimmed.rivers$connections %in% 5:6)){ 
+          trimmed.rivers$braided <- NA
+      }
   }
   trimmed.rivers$names <- rivers$names[segs]
   trimmed.rivers$lengths <- rivers$lengths[segs]
   if(length(segs)==0) stop("Error - resulting river network has no remaining line segments")
   if(!is.na(trimmed.rivers$mouth$mouth.seg) & !is.na(trimmed.rivers$mouth$mouth.vert)) {
-    if(any(segs==rivers$mouth$mouth.seg)) {
+    if(any(segs == rivers$mouth$mouth.seg)) {
       trimmed.rivers$mouth$mouth.seg <- which(segs==trimmed.rivers$mouth$mouth.seg)
     }
     if(!any(segs==rivers$mouth$mouth.seg)) {
@@ -965,38 +984,42 @@ trimriver <- function(trim=NULL,trimto=NULL,rivers) {
   }
   
   if(!is.null(rivers$segroutes) | !is.null(rivers$distlookup)) {
-    trimmed.rivers$segroutes <- NULL
+    trimmed.rivers$segroutes  <- NULL
     trimmed.rivers$distlookup <- NULL
     warning("Segment routes and/or distance lookup must be rebuilt - see help(buildsegroutes).")
   }
   trimmed.rivers <- addcumuldist(trimmed.rivers)
   
   # updating sp object
-  id <- rivers$lineID
+  id        <- rivers$lineID
   sp_lines1 <- rivers$sp@lines[unique(id[segs,2])]   
-  j<-1
+  j         <- 1
+  
   for(i in unique(id[segs,2])) {
     sp_lines1[[j]]@Lines <- sp_lines1[[j]]@Lines[id[segs,3][id[segs,2]==i]]
-    j<-j+1
+    j <- j + 1
   }
-  rivID <- NA
+  
+  rivID   <- NA
   sp_line <- NA
-  sp_seg <- NA
-  k<-1
+  sp_seg  <- NA
+  k       <- 1
   for(i in 1:length(sp_lines1)) {
     for(j in 1:length(sp_lines1[[i]]@Lines)) {
       sp_line[k] <- i
-      sp_seg[k] <- j
-      k<-k+1
+      sp_seg[k]  <- j
+      k          <- k + 1
     }
   }
-  rivID <- 1:(k-1)
-  lineID <- data.frame(rivID,sp_line,sp_seg)
-  trimmed.rivers$lineID <- lineID
+  rivID  <- 1:(k-1)
+  lineID <- data.frame(rivID, sp_line, sp_seg)
+  trimmed.rivers$lineID   <- lineID
   trimmed.rivers$sp@lines <- sp_lines1
-  if(dim(rivers$sp@data)[1]==max(rivers$lineID[,2]) & dim(rivers$sp@data)[1]>1) {
+  if(dim(rivers$sp@data)[1] == max(rivers$lineID[,2]) & 
+     dim(rivers$sp@data)[1] > 1) {
     trimmed.rivers$sp@data <- rivers$sp@data[unique(rivers$lineID[segs,2]),]
   }
+  
   message("Note: any point data already using the input river network must be re-transformed to river coordinates using xy2segvert() or ptshp2segvert().")
   return(trimmed.rivers)
 }
